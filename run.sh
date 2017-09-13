@@ -6,4 +6,5 @@
 
 # Run particle filter
 cd ./build
+make
 ./particle_filter
