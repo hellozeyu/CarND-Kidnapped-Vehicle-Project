@@ -14,6 +14,7 @@
 #include <sstream>
 #include <string>
 #include <iterator>
+#include <math.h> 
 
 #include "particle_filter.h"
 
@@ -104,31 +105,38 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   Keep in mind that this transformation requires both rotation AND translation (but no scaling).
 	//   The following is a good resource for the theory:
 	//   https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
-	//   and the following is a good resource for the actual equation to implement (look at equation 
+	//   and the following is a good resource for the actual equation to implement (look at equation
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 
-	double total_weight = 0.0;
+
+	int num_landmarks = map_landmarks.landmark_list.size();
+	int num_landmarkObs = observations.size();
 	// for every particle
-	for (int i=0; i<num_particles; i++) {
-		Particle& particle = particles[i];
+	for (int i = 0; i < num_particles; i++) {
+		Particle &particle = particles[i];
 
 		double weight = 1.0;
-		// for each observation
-		for (int l=0; l<observations.size(); l++) {
-			LandmarkObs obs = observations[l];
+
+//        std::vector<LandmarkObs> observations_pred;
+		for (int j = 0; j < num_landmarkObs; j++) {
+			LandmarkObs obs = observations[j];
 			// convert the position to map coordinates
 			double map_x = obs.x * cos(particle.theta) - obs.y * sin(particle.theta) + particle.x;
 			double map_y = obs.x * sin(particle.theta) + obs.y * cos(particle.theta) + particle.y;
 
+//            if (sqrt(pow(map_x,2) + pow(map_y,2)) <= sensor_range){
+//                observations_pred
+//
+//            }
+
 			Map::single_landmark_s closest_landmark;
 			double closest_dist;
 			// Find the closest landmark to the observation
-			for (int map_l=0; map_l<map_landmarks.landmark_list.size(); map_l++) {
+			for (int map_l = 0; map_l < num_landmarks; map_l++) {
 				auto landmark = map_landmarks.landmark_list[map_l];
 				double landmark_dist = dist(map_x, map_y, landmark.x_f, landmark.y_f);
-
-				if (map_l==0 || landmark_dist < closest_dist) {
+				if (map_l == 0 || landmark_dist < closest_dist) {
 					closest_landmark = landmark;
 					closest_dist = landmark_dist;
 				}
@@ -142,17 +150,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 					  ));
 		}
 		particle.weight = weight;
-		total_weight += weight;
-	}
 
-	// normalize the weights (this helps with numerical stability)
-	for (int i=0; i<num_particles; i++) {
-		Particle& particle = particles[i];
-		particle.weight = particle.weight / total_weight;
 	}
+}
 
-//	int num_landmarks = map_landmarks.landmark_list.size();
-//	int num_landmarkObs = observations.size();
+
 //
 //	for(int i=0; i<num_particles; ++i)
 //	{
@@ -204,7 +206,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 //		weights[i]=particles[i].weight;
 //
 //	}
-}
 
 void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
