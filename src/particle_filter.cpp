@@ -125,21 +125,23 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			double map_x = obs.x * cos(particle.theta) - obs.y * sin(particle.theta) + particle.x;
 			double map_y = obs.x * sin(particle.theta) + obs.y * cos(particle.theta) + particle.y;
 
-//            if (sqrt(pow(map_x,2) + pow(map_y,2)) <= sensor_range){
-//                observations_pred
-//
-//            }
-
 			Map::single_landmark_s closest_landmark;
 			double closest_dist;
 			// Find the closest landmark to the observation
 			for (int map_l = 0; map_l < num_landmarks; map_l++) {
 				auto landmark = map_landmarks.landmark_list[map_l];
-				double landmark_dist = dist(map_x, map_y, landmark.x_f, landmark.y_f);
-				if (map_l == 0 || landmark_dist < closest_dist) {
-					closest_landmark = landmark;
-					closest_dist = landmark_dist;
-				}
+                // We only want landmarks within the sensor range [x - sensor_range; x+sensor_range] and [y-sensor_range; y+sensor_range]
+                // to save some calculation time. Need to tweak the sensor_range parameter in the main.cpp
+                if (abs(map_x - landmark.x_f) < sensor_range & abs(map_y - landmark.y_f) < sensor_range){
+                    double landmark_dist = dist(map_x, map_y, landmark.x_f, landmark.y_f);
+                    if (map_l == 0 || landmark_dist < closest_dist) {
+                        closest_landmark = landmark;
+                        closest_dist = landmark_dist;
+                    }
+                }else{
+                    continue;
+                }
+
 			}
 			// Multiply the probability of seeing the closest landmark, with the
 			// existing weight, and update the weights
@@ -155,58 +157,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 }
 
 
-//
-//	for(int i=0; i<num_particles; ++i)
-//	{
-//		double x = particles[i].x;
-//		double y = particles[i].y;
-//		double theta = particles[i].theta;
-//
-//		std::vector<LandmarkObs> observations_pred;
-//		for(int j=0; j<num_landmarks; ++j)
-//		{
-//			Map::single_landmark_s lmk = map_landmarks.landmark_list[j];
-//			float lmk_x = lmk.x_f;
-//			float lmk_y = lmk.y_f;
-//
-//			LandmarkObs lmk_obs_pred;
-//			lmk_obs_pred.x = (lmk_x -x)*cos(theta) + (lmk_y -y)*sin(theta);
-//			lmk_obs_pred.y = -(lmk_x -x)*sin(theta) + (lmk_y -y)*cos(theta);
-//
-//			if(lmk_obs_pred.x*lmk_obs_pred.x + lmk_obs_pred.y*lmk_obs_pred.y<= sensor_range*sensor_range)
-//			{
-//				observations_pred.push_back(lmk_obs_pred);
-//			}
-//
-//		}
-//
-//		for(int k=0; k<num_landmarkObs; ++k)
-//		{
-//			LandmarkObs lmk_obs = observations[k];
-//
-//			double min_dist=99999;
-//			double matched_lmk_idx=0;
-//
-//			for(int l=0; l<observations_pred.size(); ++l)
-//			{
-//				LandmarkObs lmk_obs_pred = observations_pred[l];
-//				double distance = dist(lmk_obs.x, lmk_obs.y, lmk_obs_pred.x, lmk_obs_pred.y);
-//				if(distance<min_dist)
-//				{
-//					min_dist=distance;
-//					matched_lmk_idx = l;
-//				}
-//
-//			}
-//			double x_diff = observations_pred[matched_lmk_idx].x-lmk_obs.x;
-//			double y_diff = observations_pred[matched_lmk_idx].y-lmk_obs.y;
-//			particles[i].weight *= exp(-x_diff*x_diff/(2*std_landmark[0]*std_landmark[0])
-//									   -y_diff*y_diff/(2*std_landmark[1]*std_landmark[1]));
-//		}
-//		weights[i]=particles[i].weight;
-//
-//	}
-
 void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
@@ -214,7 +164,7 @@ void ParticleFilter::resample() {
 
 	default_random_engine gen;
 	std::vector<Particle> resampled_particles;
-	discrete_distribution<int> dist_index(0, num_particles);
+	discrete_distribution<int> dist_index(weights.begin(), weights.end());
 
 	// Calculate the max weight, and setup the distributions
 	double max_weight = 0;
@@ -223,8 +173,7 @@ void ParticleFilter::resample() {
 	}
 	uniform_real_distribution<double> dist_beta(0, 2.0 * max_weight);
 
-	// Resmaple from particles using the resampling wheel technique described in
-	// lesson 13
+	// Resmaple from lesson 13
 	int index = dist_index(gen);
 	double beta = 0;
 	for (int i=0; i<num_particles; i++) {
@@ -237,38 +186,6 @@ void ParticleFilter::resample() {
 	}
 
 	particles = resampled_particles;
-//	default_random_engine gen;
-//	discrete_distribution<> d(weights.begin(), weights.end());
-//	vector<Particle> new_particles;
-//	for(int i=0; i<num_particles; ++i)
-//	{
-//		Particle p;
-//		int index = d(gen);
-//		p.id=i;
-//		p.x = particles[index].x;
-//		p.y = particles[index].y;
-//		p.theta = particles[index].theta;
-//		p.weight= 1.0;
-//
-//		new_particles.push_back(p);
-//	}
-//
-//	particles = new_particles;
-//
-//	for(int i=0; i<num_particles; ++i)
-//	{
-//		weights[i]=1.0;
-//	}
-//	std::discrete_distribution<int> d(weights.begin(), weights.end()); // Define a discrete distribution
-//	std::vector<Particle> new_particles; // Resampled particles holder
-//	std::default_random_engine gen3;
-//
-//	for (int i = 0; i< num_particles; i++){
-//		auto index = d(gen3);
-//		new_particles.push_back(std::move(particles[index]));
-//	}
-//	//assign the particles from holder to the original
-//	particles = std::move(new_particles);
 
 }
 
